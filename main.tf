@@ -11,11 +11,27 @@ resource "aws_lambda_function" "request_lambda" {
   handler       = "request.lambda_handler"
   runtime       = "python3.9"
 
-  filename = "./request_lambda.zip"
+  filename = "./python/request.zip"
 
   environment {
     variables = {
       SQS_QUEUE_URL = aws_sqs_queue.order_queue.id
+    }
+  }
+}
+
+resource "aws_lambda_function" "sns" {
+  function_name = "sns-lambda"
+  role          = aws_iam_role.lambda_exec_role.arn
+  handler       = "sns.lambda_handler"
+  runtime       = "python3.9"
+
+  filename = "./python/sns.zip"
+
+  environment {
+    variables = {
+      SQS_QUEUE_URL = aws_sqs_queue.order_queue.id
+      SNS_TOPIC_ARN = aws_sns_topic.example.arn
     }
   }
 }
@@ -112,7 +128,8 @@ resource "aws_iam_policy" "lambda_policy" {
             "Effect": "Allow",
             "Action": [
                 "dynamodb:*",
-                "sqs:*"
+                "sqs:*",
+                "sns:*"
             ],
             "Resource": "*"
         },
@@ -179,4 +196,20 @@ resource "aws_sqs_queue" "order_queue" {
 
 output "sqs_queue_url" {
   value = aws_sqs_queue.order_queue.id
+}
+
+###########################SNS##################################
+
+resource "aws_sns_topic" "example" {
+  name = "example-topic"
+}
+
+resource "aws_sns_topic_subscription" "email_subscription" {
+  topic_arn = aws_sns_topic.example.arn
+  protocol  = "email"
+  endpoint  = "thomas.kirsch@docc.techstarter.de" # Ihre E-Mail-Adresse hier
+}
+
+output "sns_topic_arn" {
+  value = aws_sns_topic.example.arn
 }
